@@ -16,6 +16,7 @@
 
 package com.google.sample.cloudvision;
 
+import android.Manifest;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.AsyncTask;
@@ -26,7 +27,6 @@ import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
-import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -44,11 +44,13 @@ import com.google.api.services.vision.v1.model.EntityAnnotation;
 import com.google.api.services.vision.v1.model.Feature;
 import com.google.api.services.vision.v1.model.Image;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -59,12 +61,19 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private static final String CLOUD_VISION_API_KEY_FOR_ANDROID = "AIzaSyBn9K0Zb6MhXimFoqufOFJbbQdykuzdiuw";
     private static final String TAG = MainActivity.class.getSimpleName();
     private static final int GALLERY_IMAGE_REQUEST = 1;
+    private static final int STORAGE_WRITE_REQUEST = 2;
+    private static final String Path = Environment.getExternalStorageDirectory().getAbsolutePath() +
+            File.separator + "DCIM" + File.separator + "CloudVision";
+    private static final String savePath = Environment.getExternalStorageDirectory().getAbsolutePath();
+    private String temp = "";
+    private ArrayList<String> arrayForJSON = new ArrayList<String>();
     int count = 0;
 
 
     private TextView mImageDetails;
     private Button button1;
     private Button button2;
+    private Button button3;
 
     public String Result;
 
@@ -79,45 +88,24 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         button1 = (Button) findViewById(R.id.button1);
         button2 = (Button) findViewById(R.id.button2);
+        button3 = (Button) findViewById(R.id.button3);
 
         mImageDetails = (TextView) findViewById(R.id.image_details);
 
         button1.setOnClickListener(this);
         button2.setOnClickListener(this);
+        button3.setOnClickListener(this);
+
+        PermissionUtils.requestPermission(this,
+                STORAGE_WRITE_REQUEST,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE);
+
+    /*    PermissionUtils.requestPermission(this,
+                STORAGE_WRITE_REQUEST,
+                Manifest.permission.READ_EXTERNAL_STORAGE);
+*/
 
     }
-
-/*
-    public void startGalleryChooser() {
-
-        Intent intent = new Intent();
-        intent.setType("image/*");
-        intent.setAction(Intent.ACTION_GET_CONTENT);
-        startActivityForResult(Intent.createChooser(intent, "Select a photo"),
-                GALLERY_IMAGE_REQUEST);
-    }
-  */
-    /*
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-
-        if (requestCode == GALLERY_IMAGE_REQUEST && resultCode == RESULT_OK && data != null) {
-            uploadImage(data.getData());
-        }
-    }*/
-/*
-    @Override
-    public void onRequestPermissionsResult(
-            int requestCode, String[] permissions, int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (PermissionUtils.permissionGranted(
-                requestCode,
-                GALLERY_IMAGE_REQUEST,
-                grantResults)) {
-
-        }
-    }*/
 
     public void uploadImage(Bitmap extractedFiles) {
         if (extractedFiles != null) {
@@ -234,13 +222,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         return Bitmap.createScaledBitmap(bitmap, resizedWidth, resizedHeight, false);
     }
 
-//    private String convertResponseToString(BatchAnnotateImagesResponse response) {
-//    private ArrayList<String> convertResponseToString(BatchAnnotateImagesResponse response) {
-private String convertResponseToString(BatchAnnotateImagesResponse response) {
+    private String convertResponseToString(BatchAnnotateImagesResponse response) {
         String message = "";
-
-        //ArrayList<String> message = new ArrayList<>();
-        //List message = new ArrayList<String>();
 
         List<EntityAnnotation> labels = response.getResponses().get(0).getLabelAnnotations();
         if (labels != null) {
@@ -248,15 +231,9 @@ private String convertResponseToString(BatchAnnotateImagesResponse response) {
 
                 message += String.format("%s\n",label.getDescription());
 
-                //message.add(String.format("%s",label.getDescription()));
-
-                //message.add(label.getDescription());
-
-
             }
         } else {
             message += "nothing\n";
-            //message.add("nothing");
 
         }
 
@@ -265,18 +242,25 @@ private String convertResponseToString(BatchAnnotateImagesResponse response) {
 
     @Override
     public void onClick(View v) {
+
+
+        File dir = new File(savePath,"CloudVision");
+
+        if(!dir.exists()) {
+            dir.mkdir();
+        }
         if (v.getId() == R.id.button1) {
 
             Result = "";
             Toast.makeText(this, "Please Wait....", Toast.LENGTH_LONG).show();
 
-            if (PermissionUtils.requestPermission(
-                    this,
-                    GALLERY_IMAGE_REQUEST,
-                    android.Manifest.permission.READ_EXTERNAL_STORAGE)) {
+           // if (PermissionUtils.requestPermission(
+                    //this,
+                    //GALLERY_IMAGE_REQUEST,
+                  //  android.Manifest.permission.READ_EXTERNAL_STORAGE)) {
 
 
-                mImageDetails.setText("Loading...");
+                //mImageDetails.setText("Loading...");
                 try {
                     extractingImage();
                 } catch (IOException e) {
@@ -285,8 +269,8 @@ private String convertResponseToString(BatchAnnotateImagesResponse response) {
 
                     e.printStackTrace();
                 }
-                Toast.makeText(this, "Done", Toast.LENGTH_LONG).show();
-            }
+              //  Toast.makeText(this, "Done", Toast.LENGTH_LONG).show();
+            //}
 
         } else if (v.getId() == R.id.button2) {
             String[] temp = Result.split("\n");
@@ -345,19 +329,28 @@ private String convertResponseToString(BatchAnnotateImagesResponse response) {
 
             for(int index =0; index < itemList.size() ; index++){
                 finalResult += itemList.get(index) + " - " + cntList.get(index) + "\n";
+                arrayForJSON.add(index,itemList.get(index)+" - " + cntList.get(index));
             }
 
             mImageDetails.setText(finalResult);
 
         }
+
+        else if(v.getId() == R.id.button3){
+
+            JSONObject resultForJSON = new JSONObject();
+
+            try{
+                JSONArray arr = new JSONArray();
+                for(int i = 0; i< arrayForJSON.size(); i++){
+                    JSONObject sObject = new JSONObject();
+                }
+            }catch (Exception e){};
+
+        }
     }
 
     public void extractingImage() throws IOException {
-
-        String Path = Environment.getExternalStorageDirectory().getAbsolutePath() +
-                File.separator + "DCIM" + File.separator + "Camera";
-
-        String temp = "";
 
         File gallery = new File(Path);
 
@@ -397,23 +390,10 @@ private String convertResponseToString(BatchAnnotateImagesResponse response) {
 
         String[] ImageArray = s.split("\n");
 
-        int i = 1;
-
         for(String name : ImageArray){
             Bitmap bitmap = BitmapFactory.decodeFile(name);
             uploadImage(bitmap);
         }
-
-        /*
-        for (String call : ImageArray) {
-
-            mImageDetails.setText(call + "\t" + i);
-            i ++;
-            Bitmap bitmap = BitmapFactory.decodeFile(call);
-            uploadImage(bitmap);
-
-
-        }*/
 
     }
 
