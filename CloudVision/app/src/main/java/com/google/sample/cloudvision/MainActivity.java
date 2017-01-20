@@ -64,9 +64,17 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private static final int STORAGE_WRITE_REQUEST = 2;
     private static final String Path = Environment.getExternalStorageDirectory().getAbsolutePath() +
             File.separator + "DCIM" + File.separator + "CloudVision";
-    private static final String savePath = Environment.getExternalStorageDirectory().getAbsolutePath();
+    private static final String SAVEPATH = Environment.getExternalStorageDirectory().getAbsolutePath()
+            + File.separator + "CloudVision";
+    private static final String SAVEFILEPATH = "result.json";
     private String temp = "";
-    private ArrayList<String> arrayForJSON = new ArrayList<String>();
+    private String finalResult = "";
+    private ArrayList<String> itemList = new ArrayList<String>();
+    private ArrayList<Integer> cntList = new ArrayList<Integer>();
+    private File file = null;
+
+
+    //private ArrayList<String> arrayForJSON = new ArrayList<String>();
     int count = 0;
 
 
@@ -100,11 +108,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 STORAGE_WRITE_REQUEST,
                 Manifest.permission.WRITE_EXTERNAL_STORAGE);
 
-    /*    PermissionUtils.requestPermission(this,
-                STORAGE_WRITE_REQUEST,
-                Manifest.permission.READ_EXTERNAL_STORAGE);
-*/
+        File dir = makeDirectory(SAVEPATH);
 
+        file = makeFile(dir, (SAVEPATH + SAVEFILEPATH));
     }
 
     public void uploadImage(Bitmap extractedFiles) {
@@ -244,11 +250,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public void onClick(View v) {
 
 
-        File dir = new File(savePath,"CloudVision");
 
-        if(!dir.exists()) {
-            dir.mkdir();
-        }
         if (v.getId() == R.id.button1) {
 
             Result = "";
@@ -274,10 +276,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         } else if (v.getId() == R.id.button2) {
             String[] temp = Result.split("\n");
-
-            ArrayList<String> itemList = new ArrayList<String>();
-
-            ArrayList<Integer> cntList = new ArrayList<Integer>();
 
             for(int index = 0; index< temp.length ; index++){
 
@@ -325,11 +323,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             // end 데이터 유형 및 개수를 설정
             // 데이터 유형별로 중복개수와 함께 출력
 
-            String finalResult = "";
-
             for(int index =0; index < itemList.size() ; index++){
                 finalResult += itemList.get(index) + " - " + cntList.get(index) + "\n";
-                arrayForJSON.add(index,itemList.get(index)+" - " + cntList.get(index));
+                //arrayForJSON.add(index,itemList.get(index)+" - " + cntList.get(index));
             }
 
             mImageDetails.setText(finalResult);
@@ -338,13 +334,19 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         else if(v.getId() == R.id.button3){
 
-            JSONObject resultForJSON = new JSONObject();
-
+            JSONObject Result = new JSONObject();
+            JSONArray resultArray = new JSONArray();
             try{
                 JSONArray arr = new JSONArray();
-                for(int i = 0; i< arrayForJSON.size(); i++){
+                for(int i = 0; i< itemList.size(); i++){
                     JSONObject sObject = new JSONObject();
+                    sObject.put("item",itemList.get(i));
+                    sObject.put("count",cntList.get(i));
+
+                    resultArray.put(sObject);
                 }
+                Result.put("Personal Priority", resultArray);
+
             }catch (Exception e){};
 
         }
@@ -395,6 +397,48 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             uploadImage(bitmap);
         }
 
+    }
+
+    /**
+     * 디렉토리 생성
+     * @return dir
+     */
+    private File makeDirectory(String dir_path){
+        File dir = new File(dir_path);
+        if (!dir.exists())
+        {
+            dir.mkdirs();
+            Log.i( TAG , "!dir.exists" );
+        }else{
+            Log.i( TAG , "dir.exists" );
+        }
+
+        return dir;
+    }
+    /**
+     * 파일 생성
+     * @param dir
+     * @return file
+     */
+    private File makeFile(File dir , String file_path){
+        File file = null;
+        boolean isSuccess = false;
+        if(dir.isDirectory()){
+            file = new File(file_path);
+            if(file!=null&&!file.exists()){
+                Log.i( TAG , "!file.exists" );
+                try {
+                    isSuccess = file.createNewFile();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } finally{
+                    Log.i(TAG, "파일생성 여부 = " + isSuccess);
+                }
+            }else{
+                Log.i( TAG , "file.exists" );
+            }
+        }
+        return file;
     }
 
 }
